@@ -1,0 +1,9 @@
+GROUP,PACKAGE,CLASS,INSTRUCTION_MISSED,INSTRUCTION_COVERED,BRANCH_MISSED,BRANCH_COVERED,LINE_MISSED,LINE_COVERED,COMPLEXITY_MISSED,COMPLEXITY_COVERED,METHOD_MISSED,METHOD_COVERED
+secure-texteditor,com.example,App,8,0,0,0,3,0,2,0,2,0
+secure-texteditor,com.example.controller,SignatureController,131,0,2,0,29,0,5,0,4,0
+secure-texteditor,com.example.controller,CryptoController,359,0,16,0,69,0,12,0,4,0
+secure-texteditor,com.example.controller,HashingController,141,0,6,0,31,0,7,0,4,0
+secure-texteditor,com.example.controller,TextEditorController,107,0,6,0,23,0,6,0,3,0
+secure-texteditor,com.example.security,SignatureService,64,193,3,11,12,41,4,11,1,7
+secure-texteditor,com.example.security,CryptoService,233,473,62,45,40,83,46,18,0,10
+secure-texteditor,com.example.security,HashingService,14,244,8,20,4,46,8,16,0,8

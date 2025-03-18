@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CryptoController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">secure-texteditor</a> &gt; <a href="index.source.html" class="el_package">com.example.controller</a> &gt; <span class="el_source">CryptoController.java</span></div><h1>CryptoController.java</h1><pre class="source lang-java linenums">package com.example.controller;
+
+import com.example.security.CryptoService;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Base64;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.logging.Logger;
+
+/**
+ * @class CryptoController
+ * @brief REST-Controller für die Verschlüsselungs- und
+ *        Entschlüsselungsfunktionen.
+ * 
+ *        Dieser Controller stellt Endpunkte für die API bereit, um Text mittels
+ *        verschiedener
+ *        Verschlüsselungsalgorithmen zu verschlüsseln und zu entschlüsseln.
+ */
+@RestController
+@RequestMapping(&quot;/api/crypto&quot;)
+@CrossOrigin(origins = &quot;http://localhost:3000&quot;)
+public class CryptoController {
+
+    private final CryptoService cryptoService;
+<span class="nc" id="L27">    private static final Logger logger = Logger.getLogger(CryptoController.class.getName());</span>
+
+    /**
+     * @brief Konstruktor für den CryptoController.
+     * @throws Exception Falls ein Fehler bei der Initialisierung des CryptoService
+     *                   auftritt.
+     */
+<span class="nc" id="L34">    public CryptoController() throws Exception {</span>
+<span class="nc" id="L35">        this.cryptoService = new CryptoService();</span>
+<span class="nc" id="L36">    }</span>
+
+    /**
+     * @brief Verschlüsselt einen übergebenen Text.
+     * 
+     * @param request Ein JSON-Objekt mit den folgenden Parametern:
+     *                - &quot;algorithm&quot;: Der Verschlüsselungsalgorithmus (z. B. AES,
+     *                ChaCha20).
+     *                - &quot;mode&quot;: Der Modus der Verschlüsselung (z. B. CBC, GCM).
+     *                - &quot;padding&quot;: Das Padding-Verfahren (z. B. PKCS5Padding,
+     *                NoPadding).
+     *                - &quot;text&quot;: Der zu verschlüsselnde Klartext.
+     *                - &quot;keyLength&quot;: Die Schlüssellänge in Bits (z. B. 128, 192,
+     *                256).
+     *                - &quot;macAlgorithm&quot;: Falls vorhanden, der Hash-Algorithmus für
+     *                die Integritätsprüfung.
+     *                - &quot;password&quot;: Falls passwortbasierte Verschlüsselung verwendet
+     *                wird, das Passwort (Base64-kodiert).
+     * 
+     * @return Ein JSON-Objekt mit den Metadaten der Verschlüsselung:
+     *         - &quot;metadata&quot;: Die Metadaten der Verschlüsselung (Algorithmus, Modus,
+     *         Padding, IV, Salt, etc.).
+     *         - &quot;keyData&quot;: Der generierte Schlüssel (falls nicht passwortbasiert).
+     *         - &quot;error&quot;: Falls ein Fehler auftritt, eine Fehlermeldung.
+     */
+    @PostMapping(&quot;/encrypt&quot;)
+    public Map&lt;String, Object&gt; encrypt(@RequestBody Map&lt;String, String&gt; request) {
+<span class="nc" id="L63">        Map&lt;String, Object&gt; response = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L64">        char[] password = null;</span>
+
+        try {
+<span class="nc" id="L67">            String algorithm = request.get(&quot;algorithm&quot;);</span>
+<span class="nc" id="L68">            String mode = request.get(&quot;mode&quot;);</span>
+<span class="nc" id="L69">            String padding = request.get(&quot;padding&quot;);</span>
+<span class="nc" id="L70">            String text = request.get(&quot;text&quot;);</span>
+<span class="nc" id="L71">            int keyLength = Integer.parseInt(request.get(&quot;keyLength&quot;));</span>
+<span class="nc" id="L72">            String macAlgorithm = request.get(&quot;macAlgorithm&quot;);</span>
+
+<span class="nc bnc" id="L74" title="All 2 branches missed.">            byte[] passwordBytes = request.get(&quot;password&quot;) != null ? Base64.getDecoder().decode(request.get(&quot;password&quot;))</span>
+<span class="nc" id="L75">                    : null;</span>
+<span class="nc bnc" id="L76" title="All 2 branches missed.">            if (passwordBytes != null) {</span>
+<span class="nc" id="L77">                password = new char[passwordBytes.length];</span>
+<span class="nc bnc" id="L78" title="All 2 branches missed.">                for (int i = 0; i &lt; passwordBytes.length; i++) {</span>
+<span class="nc" id="L79">                    password[i] = (char) passwordBytes[i];</span>
+                }
+<span class="nc" id="L81">                Arrays.fill(passwordBytes, (byte) 0);</span>
+            }
+
+<span class="nc" id="L84">            Map&lt;String, String&gt; encryptionResult = cryptoService.encrypt(</span>
+                    algorithm, mode, padding, keyLength, text, password);
+
+<span class="nc" id="L87">            Map&lt;String, String&gt; metadataJson = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L88">            metadataJson.put(&quot;algorithm&quot;, algorithm);</span>
+<span class="nc" id="L89">            metadataJson.put(&quot;mode&quot;, mode);</span>
+<span class="nc" id="L90">            metadataJson.put(&quot;padding&quot;, padding);</span>
+<span class="nc" id="L91">            metadataJson.put(&quot;keyLength&quot;, String.valueOf(keyLength));</span>
+<span class="nc" id="L92">            metadataJson.put(&quot;macAlgorithm&quot;, macAlgorithm);</span>
+<span class="nc" id="L93">            metadataJson.put(&quot;iv&quot;, encryptionResult.getOrDefault(&quot;iv&quot;, &quot;&quot;));</span>
+<span class="nc" id="L94">            metadataJson.put(&quot;salt&quot;, encryptionResult.getOrDefault(&quot;salt&quot;, &quot;&quot;));</span>
+<span class="nc" id="L95">            metadataJson.put(&quot;encrypted&quot;, encryptionResult.get(&quot;encrypted&quot;));</span>
+
+<span class="nc" id="L97">            Map&lt;String, String&gt; keyJson = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L98">            keyJson.put(&quot;key&quot;, encryptionResult.get(&quot;key&quot;));</span>
+
+<span class="nc" id="L100">            response.put(&quot;metadata&quot;, metadataJson);</span>
+<span class="nc" id="L101">            response.put(&quot;keyData&quot;, keyJson);</span>
+
+<span class="nc" id="L103">            logger.info(&quot;✅ Encryption successful - Metadata &amp; Key returned.&quot;);</span>
+
+<span class="nc" id="L105">        } catch (Exception e) {</span>
+<span class="nc" id="L106">            response.put(&quot;error&quot;, &quot;Fehler beim Verschlüsseln: &quot; + e.getMessage());</span>
+<span class="nc" id="L107">            logger.severe(&quot;❌ Encryption error: &quot; + e.getMessage());</span>
+        } finally {
+<span class="nc bnc" id="L109" title="All 2 branches missed.">            if (password != null) {</span>
+<span class="nc" id="L110">                Arrays.fill(password, '\0');</span>
+<span class="nc" id="L111">                logger.info(&quot;🔒 Passwort sicher aus Speicher gelöscht.&quot;);</span>
+            }
+        }
+<span class="nc" id="L114">        return response;</span>
+    }
+
+    /**
+     * @brief Entschlüsselt einen übergebenen verschlüsselten Text.
+     * 
+     * @param request Ein JSON-Objekt mit den folgenden Parametern:
+     *                - &quot;algorithm&quot;: Der verwendete Verschlüsselungsalgorithmus.
+     *                - &quot;mode&quot;: Der Modus der Verschlüsselung.
+     *                - &quot;padding&quot;: Das Padding-Verfahren.
+     *                - &quot;text&quot;: Der verschlüsselte Text.
+     *                - &quot;iv&quot;: Der Initialisierungsvektor (IV), falls erforderlich.
+     *                - &quot;salt&quot;: Das verwendete Salt, falls PBE verwendet wurde.
+     *                - &quot;key&quot;: Der verwendete Schlüssel (falls nicht
+     *                passwortbasiert).
+     *                - &quot;macAlgorithm&quot;: Falls vorhanden, der Hash-Algorithmus für
+     *                die Integritätsprüfung.
+     *                - &quot;password&quot;: Falls PBE verwendet wurde, das Passwort
+     *                (Base64-kodiert).
+     *                - &quot;keyLength&quot;: Die Schlüssellänge.
+     * 
+     * @return Ein JSON-Objekt mit:
+     *         - &quot;decrypted&quot;: Der entschlüsselte Klartext.
+     *         - &quot;error&quot;: Falls ein Fehler auftritt, eine Fehlermeldung.
+     */
+    @PostMapping(&quot;/decrypt&quot;)
+    public Map&lt;String, String&gt; decrypt(@RequestBody Map&lt;String, String&gt; request) {
+<span class="nc" id="L141">        Map&lt;String, String&gt; response = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L142">        char[] password = null;</span>
+
+        try {
+<span class="nc" id="L145">            String algorithm = request.get(&quot;algorithm&quot;);</span>
+<span class="nc" id="L146">            String mode = request.get(&quot;mode&quot;);</span>
+<span class="nc" id="L147">            String padding = request.get(&quot;padding&quot;);</span>
+<span class="nc" id="L148">            String text = request.get(&quot;text&quot;);</span>
+<span class="nc" id="L149">            String iv = request.get(&quot;iv&quot;);</span>
+<span class="nc" id="L150">            String salt = request.get(&quot;salt&quot;);</span>
+<span class="nc" id="L151">            String key = request.get(&quot;key&quot;);</span>
+<span class="nc" id="L152">            String macAlgorithm = request.get(&quot;macAlgorithm&quot;);</span>
+<span class="nc" id="L153">            int keyLength = Integer.parseInt(request.get(&quot;keyLength&quot;));</span>
+
+<span class="nc bnc" id="L155" title="All 2 branches missed.">            byte[] passwordBytes = request.get(&quot;password&quot;) != null ? Base64.getDecoder().decode(request.get(&quot;password&quot;))</span>
+<span class="nc" id="L156">                    : null;</span>
+<span class="nc bnc" id="L157" title="All 2 branches missed.">            if (passwordBytes != null) {</span>
+<span class="nc" id="L158">                password = new char[passwordBytes.length];</span>
+<span class="nc bnc" id="L159" title="All 2 branches missed.">                for (int i = 0; i &lt; passwordBytes.length; i++) {</span>
+<span class="nc" id="L160">                    password[i] = (char) passwordBytes[i];</span>
+                }
+<span class="nc" id="L162">                Arrays.fill(passwordBytes, (byte) 0);</span>
+            }
+
+<span class="nc" id="L165">            String decryptedText = cryptoService.decrypt(</span>
+                    algorithm, mode, padding, keyLength, text, iv, salt, key, macAlgorithm, password);
+
+<span class="nc" id="L168">            response.put(&quot;decrypted&quot;, decryptedText);</span>
+<span class="nc" id="L169">            logger.info(&quot;✅ Decryption successful.&quot;);</span>
+
+<span class="nc" id="L171">        } catch (Exception e) {</span>
+<span class="nc" id="L172">            response.put(&quot;error&quot;, &quot;Fehler beim Entschlüsseln: &quot; + e.getMessage());</span>
+<span class="nc" id="L173">            logger.severe(&quot;❌ Decryption error: &quot; + e.getMessage());</span>
+        } finally {
+<span class="nc bnc" id="L175" title="All 2 branches missed.">            if (password != null) {</span>
+<span class="nc" id="L176">                Arrays.fill(password, '\0');</span>
+<span class="nc" id="L177">                logger.info(&quot;🔒 Passwort sicher aus Speicher gelöscht.&quot;);</span>
+            }
+        }
+<span class="nc" id="L180">        return response;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.8.202204050719</span></div></body></html>

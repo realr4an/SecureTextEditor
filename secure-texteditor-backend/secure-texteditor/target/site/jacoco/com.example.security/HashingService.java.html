@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>HashingService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">secure-texteditor</a> &gt; <a href="index.source.html" class="el_package">com.example.security</a> &gt; <span class="el_source">HashingService.java</span></div><h1>HashingService.java</h1><pre class="source lang-java linenums">package com.example.security;
+
+import org.bouncycastle.crypto.macs.CMac;
+import org.bouncycastle.crypto.params.KeyParameter;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.bouncycastle.crypto.engines.AESEngine;
+
+import javax.crypto.Mac;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.Security;
+import java.util.Base64;
+import java.util.logging.Logger;
+
+/**
+ * @class HashingService
+ * @brief Bietet Funktionen zur Hash-Generierung und -Verifikation mit
+ *        verschiedenen Algorithmen.
+ */
+<span class="fc" id="L22">public class HashingService {</span>
+
+    /**
+     * Logger-Instanz für die Protokollierung von Nachrichten in der
+     * CryptoService-Klasse.
+     */
+<span class="fc" id="L28">    private static final Logger logger = Logger.getLogger(HashingService.class.getName());</span>
+
+    // ✅ BouncyCastle als Standard-Provider aktivieren
+    static {
+<span class="pc bpc" id="L32" title="1 of 2 branches missed.">        if (Security.getProvider(BouncyCastleProvider.PROVIDER_NAME) == null) {</span>
+<span class="nc" id="L33">            Security.addProvider(new BouncyCastleProvider());</span>
+        }
+    }
+
+    // **🔑 Statische Schlüssel für HMAC &amp; CMAC (sichergestellt auf gültige
+    // Längen)**
+<span class="fc" id="L39">    private static final byte[] HMAC_SECRET_KEY = &quot;SuperSecretHMACKey123&quot;.getBytes(); // Mindestens 16 Byte</span>
+<span class="fc" id="L40">    private static final byte[] AES_CMAC_SECRET_KEY = fixAesKeyLength(&quot;SuperSecretAESCMAC!&quot;.getBytes()); // 16, 24 oder</span>
+                                                                                                         // 32 Byte
+
+    /**
+     * @brief Generiert einen Hash basierend auf dem angegebenen Algorithmus.
+     * @param message   Die Nachricht, die gehasht werden soll.
+     * @param algorithm Der gewünschte Hash-Algorithmus (&quot;SHA-256&quot;, &quot;HMAC-SHA256&quot;,
+     *                  &quot;AES-CMAC&quot;).
+     * @return Der Base64-kodierte Hash-Wert.
+     * @throws Exception Falls der Algorithmus nicht unterstützt wird.
+     */
+    public String generateHash(String message, String algorithm) throws Exception {
+<span class="fc" id="L52">        logger.info(&quot;🔍 Hashing mit Algorithmus (über BouncyCastle): &quot; + algorithm);</span>
+
+<span class="fc bfc" id="L54" title="All 4 branches covered.">        switch (algorithm) {</span>
+            case &quot;SHA-256&quot;:
+<span class="fc" id="L56">                return base64Encode(MessageDigest.getInstance(&quot;SHA-256&quot;, &quot;BC&quot;).digest(message.getBytes()));</span>
+
+            case &quot;HMAC-SHA256&quot;:
+<span class="fc" id="L59">                return computeHmac(message, &quot;HMac-SHA256&quot;, HMAC_SECRET_KEY);</span>
+
+            case &quot;AES-CMAC&quot;:
+<span class="fc" id="L62">                return computeAesCmac(message, AES_CMAC_SECRET_KEY);</span>
+
+            default:
+<span class="fc" id="L65">                throw new NoSuchAlgorithmException(&quot;❌ Nicht unterstützter Hash-Algorithmus: &quot; + algorithm);</span>
+        }
+    }
+
+    /**
+     * @brief Berechnet einen HMAC-SHA256-Hash für eine Nachricht.
+     * @param message       Die Nachricht, die gehasht werden soll.
+     * @param hmacAlgorithm Der HMAC-Algorithmus (&quot;HMac-SHA256&quot;).
+     * @param keyBytes      Der geheime Schlüssel.
+     * @return Der Base64-kodierte HMAC-Wert.
+     * @throws Exception Falls ein Fehler beim Hashing auftritt.
+     */
+    // ✅ **HMAC-SHA256 mit stabilem Schlüssel**
+    private String computeHmac(String message, String hmacAlgorithm, byte[] keyBytes) throws Exception {
+<span class="fc" id="L79">        Mac mac = Mac.getInstance(hmacAlgorithm, &quot;BC&quot;);</span>
+<span class="fc" id="L80">        SecretKey secretKey = new SecretKeySpec(keyBytes, hmacAlgorithm);</span>
+<span class="fc" id="L81">        mac.init(secretKey);</span>
+<span class="fc" id="L82">        return base64Encode(mac.doFinal(message.getBytes()));</span>
+    }
+
+    /**
+     * @brief Berechnet einen AES-CMAC-Hash für eine Nachricht.
+     * @param message  Die Nachricht, die gehasht werden soll.
+     * @param keyBytes Der geheime Schlüssel für AES-CMAC.
+     * @return Der Base64-kodierte CMAC-Wert.
+     * @throws Exception Falls ein ungültiger Schlüssel verwendet wird.
+     */
+    // ✅ **AES-CMAC mit korrektem Schlüssel (16, 24 oder 32 Byte)**
+    public String computeAesCmac(String message, byte[] keyBytes) throws Exception {
+<span class="pc bpc" id="L94" title="2 of 6 branches missed.">        if (keyBytes.length != 16 &amp;&amp; keyBytes.length != 24 &amp;&amp; keyBytes.length != 32) {</span>
+<span class="fc" id="L95">            throw new IllegalArgumentException(&quot;❌ AES-CMAC benötigt einen Schlüssel mit 16, 24 oder 32 Byte!&quot;);</span>
+        }
+
+<span class="fc" id="L98">        CMac cmac = new CMac(AESEngine.newInstance());</span>
+<span class="fc" id="L99">        cmac.init(new KeyParameter(keyBytes));</span>
+
+<span class="fc" id="L101">        byte[] messageBytes = message.getBytes();</span>
+<span class="fc" id="L102">        byte[] macResult = new byte[cmac.getMacSize()];</span>
+
+<span class="fc" id="L104">        cmac.update(messageBytes, 0, messageBytes.length);</span>
+<span class="fc" id="L105">        cmac.doFinal(macResult, 0);</span>
+
+<span class="fc" id="L107">        return base64Encode(macResult);</span>
+    }
+
+    /**
+     * @brief Stellt sicher, dass der AES-CMAC-Schlüssel eine gültige Länge hat (16,
+     *        24 oder 32 Byte).
+     * @param keyBytes Der ursprüngliche Schlüssel.
+     * @return Der auf die richtige Länge angepasste Schlüssel.
+     */
+    // ✅ **Stellt sicher, dass der AES-CMAC-Schlüssel 16, 24 oder 32 Byte lang ist**
+    private static byte[] fixAesKeyLength(byte[] keyBytes) {
+<span class="fc" id="L118">        int length = keyBytes.length;</span>
+<span class="pc bpc" id="L119" title="3 of 6 branches missed.">        if (length == 16 || length == 24 || length == 32) {</span>
+<span class="nc" id="L120">            return keyBytes; // Gültige Länge</span>
+        }
+
+        byte[] fixedKey;
+<span class="pc bpc" id="L124" title="1 of 2 branches missed.">        if (length &lt; 16) {</span>
+<span class="nc" id="L125">            fixedKey = new byte[16]; // Falls der Schlüssel zu kurz ist, auf 16 Byte aufstocken</span>
+<span class="pc bpc" id="L126" title="1 of 2 branches missed.">        } else if (length &lt; 24) {</span>
+<span class="fc" id="L127">            fixedKey = new byte[24];</span>
+        } else {
+<span class="nc" id="L129">            fixedKey = new byte[32]; // Alles über 24 wird auf 32 verlängert</span>
+        }
+
+<span class="fc" id="L132">        System.arraycopy(keyBytes, 0, fixedKey, 0, Math.min(keyBytes.length, fixedKey.length));</span>
+<span class="fc" id="L133">        return fixedKey;</span>
+    }
+
+    /**
+     * @brief Kodiert ein Byte-Array in Base64.
+     * @param data Das zu kodierende Byte-Array.
+     * @return Die Base64-kodierte Zeichenkette.
+     */
+    private String base64Encode(byte[] data) {
+<span class="fc" id="L142">        return Base64.getEncoder().encodeToString(data);</span>
+    }
+
+    /**
+     * @brief Überprüft, ob ein gegebener Hash mit der berechneten Hash-Wert
+     *        übereinstimmt.
+     * @param message      Die Originalnachricht.
+     * @param expectedHash Der erwartete Hash-Wert.
+     * @param algorithm    Der verwendete Hash-Algorithmus (&quot;SHA-256&quot;,
+     *                     &quot;HMAC-SHA256&quot;, &quot;AES-CMAC&quot;).
+     * @return True, wenn der Hash gültig ist, andernfalls false.
+     * @throws Exception Falls der Algorithmus nicht unterstützt wird.
+     */
+    // ✅ **📌 Hash-Verifikation für SHA-256, HMAC-SHA256 &amp; AES-CMAC**
+    public boolean verifyHash(String message, String expectedHash, String algorithm) throws Exception {
+<span class="fc" id="L157">        logger.info(&quot;🔍 Überprüfung des Hash mit Algorithmus: &quot; + algorithm);</span>
+
+        String computedHash;
+<span class="fc bfc" id="L160" title="All 4 branches covered.">        switch (algorithm) {</span>
+            case &quot;SHA-256&quot;:
+<span class="fc" id="L162">                computedHash = base64Encode(MessageDigest.getInstance(&quot;SHA-256&quot;, &quot;BC&quot;).digest(message.getBytes()));</span>
+<span class="fc" id="L163">                break;</span>
+            case &quot;HMAC-SHA256&quot;:
+<span class="fc" id="L165">                computedHash = computeHmac(message, &quot;HMac-SHA256&quot;, HMAC_SECRET_KEY);</span>
+<span class="fc" id="L166">                break;</span>
+            case &quot;AES-CMAC&quot;:
+<span class="fc" id="L168">                computedHash = computeAesCmac(message, AES_CMAC_SECRET_KEY);</span>
+<span class="fc" id="L169">                break;</span>
+            default:
+<span class="fc" id="L171">                throw new NoSuchAlgorithmException(&quot;❌ Nicht unterstützter Hash-Algorithmus: &quot; + algorithm);</span>
+        }
+
+<span class="fc" id="L174">        boolean isValid = computedHash.equals(expectedHash);</span>
+<span class="fc bfc" id="L175" title="All 2 branches covered.">        if (isValid) {</span>
+<span class="fc" id="L176">            logger.info(&quot;✅ Hash erfolgreich verifiziert!&quot;);</span>
+        } else {
+<span class="fc" id="L178">            logger.warning(&quot;⚠️ Hash-Verifikation fehlgeschlagen! Manipulation möglich.&quot;);</span>
+        }
+<span class="fc" id="L180">        return isValid;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.8.202204050719</span></div></body></html>

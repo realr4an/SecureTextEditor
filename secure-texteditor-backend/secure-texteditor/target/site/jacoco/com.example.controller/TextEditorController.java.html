@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TextEditorController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">secure-texteditor</a> &gt; <a href="index.source.html" class="el_package">com.example.controller</a> &gt; <span class="el_source">TextEditorController.java</span></div><h1>TextEditorController.java</h1><pre class="source lang-java linenums">package com.example.controller;
+
+import org.springframework.web.bind.annotation.*;
+import javax.swing.*;
+import java.io.*;
+
+/**
+ * @class TextEditorController
+ * @brief Bietet API-Endpunkte für das Laden und Speichern von Dateien über
+ *        einen nativen Datei-Dialog.
+ *
+ *        Diese Klasse nutzt die Java Swing `JFileChooser`, um dem Benutzer das
+ *        Speichern und Öffnen von Dateien zu ermöglichen.
+ */
+@RestController
+@RequestMapping(&quot;/api&quot;)
+@CrossOrigin(origins = &quot;http://localhost:3000&quot;)
+<span class="nc" id="L18">public class TextEditorController {</span>
+
+    /**
+     * @brief Öffnet einen nativen Datei-Dialog, um eine Datei zu speichern.
+     *
+     *        Diese Methode ruft den JFileChooser auf, damit der Benutzer eine Datei
+     *        speichern kann.
+     *
+     * @param content Der zu speichernde Textinhalt.
+     * @return Eine Nachricht über das Ergebnis des Speichervorgangs:
+     *         - `&quot;Datei gespeichert: [Pfad]&quot;`, falls erfolgreich.
+     *         - `&quot;Fehler: [Fehlermeldung]&quot;`, falls ein Fehler auftritt.
+     *         - `&quot;Speichern abgebrochen.&quot;`, falls der Benutzer den Vorgang
+     *         abbricht.
+     */
+    /** 📌 Öffnet einen nativen Datei-Dialog für das Speichern */
+    @PostMapping(&quot;/save-dialog&quot;)
+    public String saveWithDialog(@RequestBody String content) {
+<span class="nc" id="L36">        JFileChooser fileChooser = new JFileChooser();</span>
+<span class="nc" id="L37">        int option = fileChooser.showSaveDialog(null);</span>
+<span class="nc bnc" id="L38" title="All 2 branches missed.">        if (option == JFileChooser.APPROVE_OPTION) {</span>
+<span class="nc" id="L39">            File file = fileChooser.getSelectedFile();</span>
+<span class="nc" id="L40">            try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {</span>
+<span class="nc" id="L41">                writer.write(content);</span>
+<span class="nc" id="L42">                return &quot;Datei gespeichert: &quot; + file.getAbsolutePath();</span>
+<span class="nc" id="L43">            } catch (IOException e) {</span>
+<span class="nc" id="L44">                return &quot;Fehler: &quot; + e.getMessage();</span>
+            }
+        }
+<span class="nc" id="L47">        return &quot;Speichern abgebrochen.&quot;;</span>
+    }
+
+    /**
+     * @brief Öffnet einen nativen Datei-Dialog, um eine Datei zu laden.
+     *
+     *        Diese Methode ermöglicht es dem Benutzer, eine Datei auszuwählen und
+     *        ihren Inhalt zurückzugeben.
+     *
+     * @return Der Inhalt der geladenen Datei oder eine Fehlermeldung:
+     *         - Der Dateiinhalt als `String`, falls erfolgreich.
+     *         - `&quot;Fehler: [Fehlermeldung]&quot;`, falls ein Fehler auftritt.
+     *         - `&quot;Öffnen abgebrochen.&quot;`, falls der Benutzer den Vorgang abbricht.
+     */
+    /** 📌 Öffnet einen nativen Datei-Dialog für das Laden */
+    @GetMapping(&quot;/open-dialog&quot;)
+    public String openWithDialog() {
+<span class="nc" id="L64">        JFileChooser fileChooser = new JFileChooser();</span>
+<span class="nc" id="L65">        int option = fileChooser.showOpenDialog(null);</span>
+<span class="nc bnc" id="L66" title="All 2 branches missed.">        if (option == JFileChooser.APPROVE_OPTION) {</span>
+<span class="nc" id="L67">            File file = fileChooser.getSelectedFile();</span>
+<span class="nc" id="L68">            try (BufferedReader reader = new BufferedReader(new FileReader(file))) {</span>
+<span class="nc" id="L69">                StringBuilder content = new StringBuilder();</span>
+                String line;
+<span class="nc bnc" id="L71" title="All 2 branches missed.">                while ((line = reader.readLine()) != null) {</span>
+<span class="nc" id="L72">                    content.append(line).append(&quot;\n&quot;);</span>
+                }
+<span class="nc" id="L74">                return content.toString();</span>
+<span class="nc" id="L75">            } catch (IOException e) {</span>
+<span class="nc" id="L76">                return &quot;Fehler: &quot; + e.getMessage();</span>
+            }
+        }
+<span class="nc" id="L79">        return &quot;Öffnen abgebrochen.&quot;;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.8.202204050719</span></div></body></html>

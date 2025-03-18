@@ -1,0 +1,340 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CryptoService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">secure-texteditor</a> &gt; <a href="index.source.html" class="el_package">com.example.security</a> &gt; <span class="el_source">CryptoService.java</span></div><h1>CryptoService.java</h1><pre class="source lang-java linenums">package com.example.security;
+
+import org.bouncycastle.crypto.generators.SCrypt;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+
+import javax.crypto.*;
+import javax.crypto.spec.*;
+import java.security.*;
+import java.security.spec.*;
+import java.util.Arrays;
+import java.util.Base64;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.logging.Logger;
+
+/**
+ * @class CryptoService
+ * @brief Bietet Verschlüsselungs- und Entschlüsselungsfunktionen mit
+ *        Unterstützung für verschiedene Algorithmen.
+ */
+<span class="fc" id="L21">public class CryptoService {</span>
+    static {
+<span class="fc" id="L23">        Security.addProvider(new BouncyCastleProvider());</span>
+    }
+
+    /**
+     * Eine Instanz von SecureRandom zur Erzeugung kryptographisch sicherer
+     * Zufallswerte.
+     */
+<span class="fc" id="L30">    private final SecureRandom secureRandom = new SecureRandom();</span>
+
+    /**
+     * Logger-Instanz für die Protokollierung von Nachrichten in der
+     * CryptoService-Klasse.
+     */
+<span class="fc" id="L36">    private static final Logger logger = Logger.getLogger(CryptoService.class.getName());</span>
+
+    /**
+     * @brief Erstellt einen geheimen Schlüssel für die Verschlüsselung.
+     * @param algorithm Der Verschlüsselungsalgorithmus (z. B. &quot;AES&quot; oder
+     *                  &quot;ChaCha20&quot;).
+     * @param keySize   Die Schlüssellänge in Bits.
+     * @param password  Falls vorhanden, ein Passwort zur Ableitung des Schlüssels.
+     * @param salt      Falls ein Passwort genutzt wird, das dazugehörige Salt.
+     * @return Der generierte SecretKey.
+     * @throws Exception Falls die Schlüsselgenerierung fehlschlägt.
+     */
+    public SecretKey generateKey(String algorithm, int keySize, char[] password, byte[] salt) throws Exception {
+<span class="fc" id="L49">        logger.info(&quot;Generating key for algorithm: &quot; + algorithm);</span>
+<span class="pc bpc" id="L50" title="1 of 4 branches missed.">        if (password != null &amp;&amp; password.length &gt; 0) {</span>
+<span class="fc" id="L51">            return generateKeyFromPassword(algorithm, password, keySize, salt);</span>
+        } else {
+<span class="fc" id="L53">            return generateRandomKey(algorithm, keySize);</span>
+        }
+    }
+
+    /**
+     * @brief Erzeugt einen Schlüssel aus einem Passwort mithilfe eines
+     *        Key-Derivation-Algorithmus.
+     * @param algorithm Der zu verwendende Algorithmus.
+     * @param password  Das Passwort zur Schlüsselableitung.
+     * @param keySize   Die gewünschte Schlüssellänge in Bits.
+     * @param salt      Das Salt zur Erhöhung der Sicherheit.
+     * @return Der generierte SecretKey.
+     * @throws Exception Falls ein Fehler bei der Ableitung auftritt.
+     */
+    private SecretKey generateKeyFromPassword(String algorithm, char[] password, int keySize, byte[] salt)
+            throws Exception {
+<span class="fc" id="L69">        logger.info(&quot;Generating key from password for algorithm: &quot; + algorithm);</span>
+        byte[] keyBytes;
+        try {
+<span class="pc bpc" id="L72" title="3 of 4 branches missed.">            if (&quot;AES&quot;.equals(algorithm) || &quot;ChaCha20&quot;.equals(algorithm)) {</span>
+<span class="fc" id="L73">                keyBytes = SCrypt.generate(new String(password).getBytes(), salt, 16384, 8, 1, keySize / 8);</span>
+<span class="nc bnc" id="L74" title="All 2 branches missed.">            } else if (&quot;PBEWithSHA256&quot;.equals(algorithm)) {</span>
+<span class="nc" id="L75">                PBEKeySpec spec = new PBEKeySpec(password, salt, 65536, keySize);</span>
+<span class="nc" id="L76">                SecretKeyFactory factory = SecretKeyFactory.getInstance(&quot;PBKDF2WithHmacSHA256&quot;);</span>
+<span class="nc" id="L77">                keyBytes = factory.generateSecret(spec).getEncoded();</span>
+<span class="nc" id="L78">            } else {</span>
+<span class="nc" id="L79">                throw new IllegalArgumentException(&quot;Unbekannter PBE-Algorithmus: &quot; + algorithm);</span>
+            }
+        } finally {
+<span class="fc" id="L82">            Arrays.fill(password, '\0');</span>
+<span class="fc" id="L83">            logger.info(&quot;Password securely cleared from memory.&quot;);</span>
+        }
+<span class="fc" id="L85">        return new SecretKeySpec(keyBytes, algorithm);</span>
+    }
+
+    /**
+     * @brief Erstellt einen zufälligen Verschlüsselungsschlüssel.
+     * @param algorithm Der zu verwendende Algorithmus.
+     * @param keySize   Die gewünschte Schlüssellänge in Bits.
+     * @return Der generierte SecretKey.
+     * @throws Exception Falls ein Fehler auftritt.
+     */
+    private SecretKey generateRandomKey(String algorithm, int keySize) throws Exception {
+<span class="fc" id="L96">        logger.info(&quot;Generating random key for algorithm: &quot; + algorithm);</span>
+<span class="fc" id="L97">        byte[] keyBytes = new byte[keySize / 8];</span>
+<span class="fc" id="L98">        secureRandom.nextBytes(keyBytes);</span>
+<span class="fc" id="L99">        return new SecretKeySpec(keyBytes, algorithm);</span>
+    }
+
+    /**
+     * @brief Verschlüsselt eine Nachricht mit dem angegebenen Algorithmus.
+     * @param algorithm Verschlüsselungsalgorithmus.
+     * @param mode      Verschlüsselungsmodus (z. B. &quot;CBC&quot;, &quot;GCM&quot;).
+     * @param padding   Padding-Verfahren (z. B. &quot;PKCS5Padding&quot;).
+     * @param keyLength Schlüssellänge in Bits.
+     * @param plaintext Die zu verschlüsselnde Nachricht.
+     * @param password  Optionales Passwort für passwortbasierte Verschlüsselung
+     *                  (PBE).
+     * @return Ein Map-Objekt mit dem verschlüsselten Text, dem Schlüssel und den
+     *         Metadaten.
+     * @throws Exception Falls ein Fehler bei der Verschlüsselung auftritt.
+     */
+    public Map&lt;String, String&gt; encrypt(String algorithm, String mode, String padding, int keyLength, String plaintext,
+            char[] password) throws Exception {
+<span class="fc" id="L117">        logger.info(</span>
+                &quot;🔒 Starting encryption process: Algorithm=&quot; + algorithm + &quot;, Mode=&quot; + mode + &quot;, Padding=&quot; + padding);
+
+<span class="pc bpc" id="L120" title="2 of 4 branches missed.">        if (algorithm == null || algorithm.isEmpty()) {</span>
+<span class="nc" id="L121">            throw new IllegalArgumentException(&quot;Kein Algorithmus angegeben!&quot;);</span>
+        }
+
+        SecretKey key;
+<span class="fc" id="L125">        byte[] salt = null;</span>
+<span class="fc" id="L126">        byte[] iv = null;</span>
+
+        // Falls PBE verwendet wird (Passwort vorhanden)
+<span class="pc bpc" id="L129" title="3 of 4 branches missed.">        if (password != null &amp;&amp; password.length &gt; 0) {</span>
+<span class="nc" id="L130">            salt = new byte[16];</span>
+<span class="nc" id="L131">            secureRandom.nextBytes(salt);</span>
+<span class="nc" id="L132">            key = generateKeyFromPassword(algorithm, password, keyLength, salt);</span>
+<span class="nc" id="L133">            logger.info(&quot;🔑 Using password-based encryption (PBE).&quot;);</span>
+
+            // **⚠️ Spezialfälle: PBE benötigt evtl. IV!**
+<span class="nc bnc" id="L136" title="All 6 branches missed.">            if ((&quot;AES&quot;.equals(algorithm) &amp;&amp; &quot;CBC&quot;.equals(mode)) || &quot;ChaCha20&quot;.equals(algorithm)) {</span>
+<span class="nc" id="L137">                iv = generateIV(algorithm, mode);</span>
+<span class="nc" id="L138">                logger.info(&quot;🔑 Generierte IV für PBE-Mode: &quot; + algorithm + &quot; / &quot; + mode);</span>
+            }
+
+            // **⚠️ AES-GCM mit PBE benötigt ebenfalls eine IV!**
+<span class="nc bnc" id="L142" title="All 4 branches missed.">            if (&quot;AES&quot;.equals(algorithm) &amp;&amp; &quot;GCM&quot;.equals(mode)) {</span>
+<span class="nc" id="L143">                iv = generateIV(algorithm, mode);</span>
+<span class="nc" id="L144">                logger.info(&quot;🔑 Generierte IV für AES-GCM (PBE): &quot; + Base64.getEncoder().encodeToString(iv));</span>
+            }
+        }
+        // Falls KEIN PBE → Generiere zufälligen Schlüssel &amp; IV
+        else {
+<span class="fc" id="L149">            key = generateRandomKey(algorithm, keyLength);</span>
+<span class="fc" id="L150">            iv = generateIV(algorithm, mode);</span>
+<span class="fc" id="L151">            logger.info(&quot;🔑 Using random key encryption.&quot;);</span>
+        }
+
+        // **Validiere IV für ChaCha20 oder AES-GCM**
+<span class="pc bpc" id="L155" title="3 of 8 branches missed.">        if ((&quot;ChaCha20&quot;.equals(algorithm) || &quot;GCM&quot;.equals(mode)) &amp;&amp; (iv == null || iv.length == 0)) {</span>
+<span class="nc" id="L156">            throw new IllegalArgumentException(&quot;❌ Kein IV für diesen Modus vorhanden!&quot;);</span>
+        }
+
+        // Wähle die richtige ParameterSpec
+<span class="fc" id="L160">        AlgorithmParameterSpec parameterSpec = getParameterSpec(algorithm, mode, salt, iv);</span>
+
+        // Dynamische Konstruktion des Cipher-Algorithmus-Strings
+<span class="fc" id="L163">        String cipherAlgorithm = algorithm;</span>
+<span class="fc bfc" id="L164" title="All 2 branches covered.">        if (!cipherAlgorithm.equals(&quot;ChaCha20&quot;)) {</span>
+<span class="pc bpc" id="L165" title="2 of 4 branches missed.">            if (mode != null &amp;&amp; !mode.equalsIgnoreCase(&quot;None&quot;)) {</span>
+<span class="fc" id="L166">                cipherAlgorithm += &quot;/&quot; + mode;</span>
+            }
+            // if (padding != null &amp;&amp; !padding.equalsIgnoreCase(&quot;NoPadding&quot;)) {
+<span class="fc" id="L169">            cipherAlgorithm += &quot;/&quot; + padding;</span>
+            // }
+        }
+
+        // Cipher initialisieren &amp; Verschlüsseln
+<span class="fc" id="L174">        Cipher cipher = Cipher.getInstance(cipherAlgorithm, &quot;BC&quot;);</span>
+<span class="fc" id="L175">        cipher.init(Cipher.ENCRYPT_MODE, key, parameterSpec);</span>
+<span class="fc" id="L176">        byte[] encryptedBytes = cipher.doFinal(plaintext.getBytes());</span>
+
+<span class="fc" id="L178">        logger.info(&quot;✅ Encryption successful.&quot;);</span>
+
+        // MAC generieren
+<span class="fc" id="L181">        Map&lt;String, String&gt; result = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L182">        result.put(&quot;encrypted&quot;, Base64.getEncoder().encodeToString(encryptedBytes));</span>
+<span class="fc" id="L183">        result.put(&quot;key&quot;, Base64.getEncoder().encodeToString(key.getEncoded()));</span>
+
+        // Speichere Salt, falls PBE verwendet wurde
+<span class="pc bpc" id="L186" title="3 of 4 branches missed.">        if (password != null &amp;&amp; password.length &gt; 0) {</span>
+<span class="nc" id="L187">            result.put(&quot;salt&quot;, Base64.getEncoder().encodeToString(salt));</span>
+<span class="nc" id="L188">            logger.info(&quot;🔑 Stored Salt for PBE algorithm.&quot;);</span>
+        }
+
+        // Speichere IV, falls verwendet
+<span class="pc bpc" id="L192" title="1 of 2 branches missed.">        if (iv != null) {</span>
+<span class="fc" id="L193">            result.put(&quot;iv&quot;, Base64.getEncoder().encodeToString(iv));</span>
+<span class="fc" id="L194">            logger.info(&quot;🔑 Stored IV for algorithm.&quot;);</span>
+        }
+
+        // Passwort sicher löschen
+<span class="pc bpc" id="L198" title="1 of 2 branches missed.">        if (password != null) {</span>
+<span class="nc" id="L199">            Arrays.fill(password, '\0');</span>
+<span class="nc" id="L200">            logger.info(&quot;🔒 Passwort sicher aus Speicher gelöscht.&quot;);</span>
+        }
+<span class="fc" id="L202">        logger.info(&quot;Encryption result: &quot; + result);</span>
+<span class="fc" id="L203">        return result;</span>
+    }
+
+    /**
+     * @brief Entschlüsselt eine verschlüsselte Nachricht.
+     * @param algorithm    Der Verschlüsselungsalgorithmus.
+     * @param mode         Der Verschlüsselungsmodus.
+     * @param padding      Das Padding-Verfahren.
+     * @param keyLength    Die Schlüssellänge in Bits.
+     * @param ciphertext   Der verschlüsselte Text.
+     * @param ivBase64     Base64-kodierter Initialisierungsvektor (IV).
+     * @param saltBase64   Base64-kodiertes Salt (falls PBE verwendet wird).
+     * @param keyBase64    Base64-kodierter Schlüssel.
+     * @param macAlgorithm Optionaler MAC-Algorithmus.
+     * @param password     Optionales Passwort für passwortbasierte Entschlüsselung.
+     * @return Der entschlüsselte Klartext.
+     * @throws Exception Falls die Entschlüsselung fehlschlägt.
+     */
+    public String decrypt(String algorithm, String mode, String padding, int keyLength, String ciphertext,
+            String ivBase64, String saltBase64, String keyBase64, String macAlgorithm,
+            char[] password) throws Exception {
+<span class="fc" id="L224">        logger.info(&quot;🔓 Starting decryption for Algorithm=&quot; + algorithm + &quot;, Mode=&quot; + mode);</span>
+
+<span class="pc bpc" id="L226" title="2 of 4 branches missed.">        if (algorithm == null || algorithm.isEmpty()) {</span>
+<span class="nc" id="L227">            throw new IllegalArgumentException(&quot;❌ Kein Algorithmus angegeben!&quot;);</span>
+        }
+
+<span class="pc bpc" id="L230" title="2 of 4 branches missed.">        byte[] salt = (saltBase64 != null &amp;&amp; !saltBase64.isEmpty()) ? Base64.getDecoder().decode(saltBase64) : null;</span>
+<span class="pc bpc" id="L231" title="1 of 4 branches missed.">        byte[] iv = (ivBase64 != null &amp;&amp; !ivBase64.isEmpty()) ? Base64.getDecoder().decode(ivBase64) : null;</span>
+<span class="pc bpc" id="L232" title="2 of 4 branches missed.">        byte[] keyBytes = (keyBase64 != null &amp;&amp; !keyBase64.isEmpty()) ? Base64.getDecoder().decode(keyBase64) : null;</span>
+        SecretKey key;
+
+        // Falls PBE aktiv ist (Passwort &amp; Salt vorhanden)
+<span class="pc bpc" id="L236" title="5 of 6 branches missed.">        if (password != null &amp;&amp; password.length &gt; 0 &amp;&amp; salt != null) {</span>
+<span class="nc" id="L237">            key = generateKeyFromPassword(algorithm, password, keyLength, salt);</span>
+<span class="nc" id="L238">            logger.info(&quot;🔑 PBE-Schlüssel erfolgreich generiert aus Passwort.&quot;);</span>
+
+            // **⚠️ Spezialfall: AES-CBC im PBE-Modus benötigt zusätzlich ein IV!**
+<span class="nc bnc" id="L241" title="All 6 branches missed.">            if (&quot;AES&quot;.equals(algorithm) &amp;&amp; &quot;CBC&quot;.equals(mode) &amp;&amp; iv == null) {</span>
+<span class="nc" id="L242">                throw new IllegalArgumentException(&quot;❌ Kein IV für AES-CBC mit PBE vorhanden!&quot;);</span>
+            }
+        }
+        // Falls KEIN PBE → Nutze gespeicherten Schlüssel
+<span class="pc bpc" id="L246" title="1 of 2 branches missed.">        else if (keyBytes != null) {</span>
+<span class="fc" id="L247">            key = new SecretKeySpec(keyBytes, algorithm);</span>
+<span class="fc" id="L248">            logger.info(&quot;🔑 Schlüssel erfolgreich aus JSON geladen.&quot;);</span>
+
+            // **IV ist für alle nicht-PBE Modi erforderlich**
+<span class="pc bpc" id="L251" title="1 of 4 branches missed.">            if (iv == null || iv.length == 0) {</span>
+<span class="fc" id="L252">                throw new IllegalArgumentException(&quot;❌ Kein IV vorhanden, aber für diesen Modus erforderlich!&quot;);</span>
+            }
+        }
+        // Falls kein Salt und kein Key → Fehler!
+        else {
+<span class="nc" id="L257">            throw new IllegalArgumentException(&quot;❌ Kein gültiger Schlüssel oder Salt gefunden!&quot;);</span>
+        }
+
+        // AlgorithmParameterSpec setzen
+<span class="fc" id="L261">        AlgorithmParameterSpec parameterSpec = getParameterSpec(algorithm, mode, salt, iv);</span>
+
+        // Cipher initialisieren
+<span class="fc" id="L264">        Cipher cipher = Cipher.getInstance(algorithm + &quot;/&quot; + mode + &quot;/&quot; + padding, &quot;BC&quot;);</span>
+<span class="fc" id="L265">        cipher.init(Cipher.DECRYPT_MODE, key, parameterSpec);</span>
+
+        // Entschlüsseln
+<span class="fc" id="L268">        byte[] decryptedBytes = cipher.doFinal(Base64.getDecoder().decode(ciphertext));</span>
+<span class="fc" id="L269">        String plaintext = new String(decryptedBytes);</span>
+
+<span class="fc" id="L271">        logger.info(&quot;✅ Decryption successful!&quot;);</span>
+
+        // Passwort sicher löschen
+<span class="pc bpc" id="L274" title="1 of 2 branches missed.">        if (password != null) {</span>
+<span class="nc" id="L275">            Arrays.fill(password, '\0');</span>
+<span class="nc" id="L276">            logger.info(&quot;🔒 Passwort sicher aus Speicher gelöscht.&quot;);</span>
+        }
+
+<span class="fc" id="L279">        return plaintext;</span>
+    }
+
+    private AlgorithmParameterSpec getParameterSpec(String algorithm, String mode, byte[] salt, byte[] iv) {
+<span class="pc bpc" id="L283" title="1 of 2 branches missed.">        if (&quot;PBEWithSHA256And128BitAES-CBC-BC&quot;.equals(algorithm)) {</span>
+<span class="nc bnc" id="L284" title="All 2 branches missed.">            if (salt == null) {</span>
+<span class="nc" id="L285">                throw new IllegalArgumentException(&quot;❌ Kein Salt für PBE gefunden!&quot;);</span>
+            }
+<span class="nc" id="L287">            logger.info(&quot;🔑 Using PBEParameterSpec with salt.&quot;);</span>
+<span class="nc" id="L288">            return new PBEParameterSpec(salt, 65536);</span>
+        }
+
+<span class="pc bpc" id="L291" title="1 of 2 branches missed.">        if (&quot;GCM&quot;.equals(mode)) {</span>
+<span class="nc bnc" id="L292" title="All 2 branches missed.">            if (iv == null) {</span>
+<span class="nc" id="L293">                throw new IllegalArgumentException(&quot;❌ Kein IV für GCM-Modus vorhanden!&quot;);</span>
+            }
+<span class="nc" id="L295">            logger.info(&quot;🔑 Using GCMParameterSpec with IV.&quot;);</span>
+<span class="nc" id="L296">            return new GCMParameterSpec(128, iv);</span>
+        }
+
+<span class="pc bpc" id="L299" title="1 of 2 branches missed.">        if (iv == null) {</span>
+<span class="nc" id="L300">            throw new IllegalArgumentException(&quot;❌ Kein IV für diesen Modus vorhanden!&quot;);</span>
+        }
+
+<span class="fc" id="L303">        logger.info(&quot;🔑 Using IvParameterSpec with IV.&quot;);</span>
+<span class="fc" id="L304">        return new IvParameterSpec(iv);</span>
+    }
+
+    private byte[] generateIV(String algorithm, String mode) {
+<span class="pc bpc" id="L308" title="1 of 4 branches missed.">        int ivSize = &quot;ChaCha20&quot;.equals(algorithm) || &quot;GCM&quot;.equals(mode) ? 12 : 16;</span>
+<span class="fc" id="L309">        byte[] iv = new byte[ivSize];</span>
+<span class="fc" id="L310">        secureRandom.nextBytes(iv);</span>
+<span class="fc" id="L311">        return iv;</span>
+    }
+
+    /**
+     * @brief Generiert einen MAC-Hash für eine Nachricht.
+     * @param message      Die Nachricht.
+     * @param key          Der geheime Schlüssel.
+     * @param macAlgorithm Der gewünschte MAC-Algorithmus (&quot;SHA-256&quot;,
+     *                     &quot;HMAC-SHA256&quot;).
+     * @return Der Base64-kodierte MAC-Wert.
+     * @throws Exception Falls der MAC-Algorithmus nicht unterstützt wird.
+     */
+    public String generateMAC(String message, SecretKey key, String macAlgorithm) throws Exception {
+<span class="pc bpc" id="L324" title="2 of 4 branches missed.">        if (macAlgorithm == null || macAlgorithm.isEmpty())</span>
+<span class="nc" id="L325">            return &quot;&quot;;</span>
+
+<span class="fc bfc" id="L327" title="All 3 branches covered.">        switch (macAlgorithm) {</span>
+            case &quot;SHA-256&quot;:
+<span class="fc" id="L329">                return Base64.getEncoder()</span>
+<span class="fc" id="L330">                        .encodeToString(MessageDigest.getInstance(&quot;SHA-256&quot;).digest(message.getBytes()));</span>
+            case &quot;HMAC-SHA256&quot;:
+<span class="fc" id="L332">                Mac hmac = Mac.getInstance(&quot;HmacSHA256&quot;);</span>
+<span class="fc" id="L333">                hmac.init(key);</span>
+<span class="fc" id="L334">                return Base64.getEncoder().encodeToString(hmac.doFinal(message.getBytes()));</span>
+            default:
+<span class="fc" id="L336">                throw new IllegalArgumentException(&quot;Unbekannter MAC-Algorithmus: &quot; + macAlgorithm);</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.8.202204050719</span></div></body></html>

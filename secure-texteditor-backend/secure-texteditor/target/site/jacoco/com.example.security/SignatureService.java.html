@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SignatureService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">secure-texteditor</a> &gt; <a href="index.source.html" class="el_package">com.example.security</a> &gt; <span class="el_source">SignatureService.java</span></div><h1>SignatureService.java</h1><pre class="source lang-java linenums">package com.example.security;
+
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+
+import java.io.*;
+import java.security.*;
+import java.security.spec.*;
+import java.util.Base64;
+import java.util.logging.Logger;
+
+/**
+ * @class SignatureService
+ * @brief Bietet Funktionen zum Erstellen und Verifizieren digitaler Signaturen.
+ */
+<span class="fc" id="L15">public class SignatureService {</span>
+    /**
+     * Logger-Instanz für die Protokollierung von Nachrichten in der
+     * SignatureService-Klasse.
+     */
+<span class="fc" id="L20">    private static final Logger logger = Logger.getLogger(SignatureService.class.getName());</span>
+
+    /**
+     * Dateiname für den gespeicherten DSA-Schlüsselpaar.
+     */
+    private static final String DSA_KEY_FILE = &quot;dsa_keypair.pem&quot;;
+
+    /**
+     * Dateiname für den gespeicherten ECDSA-Schlüsselpaar.
+     */
+    private static final String ECDSA_KEY_FILE = &quot;ecdsa_keypair.pem&quot;;
+
+    static {
+<span class="pc bpc" id="L33" title="1 of 2 branches missed.">        if (Security.getProvider(BouncyCastleProvider.PROVIDER_NAME) == null) {</span>
+<span class="nc" id="L34">            Security.addProvider(new BouncyCastleProvider());</span>
+        }
+<span class="fc" id="L36">    }</span>
+
+    /**
+     * @brief Erstellt eine digitale Signatur für den gegebenen Text.
+     * @param text      Der zu signierende Text.
+     * @param algorithm Der Signaturalgorithmus (SHA256withDSA oder
+     *                  SHA256withECDSA).
+     * @return Base64-kodierte Signatur.
+     * @throws Exception Falls ein Fehler beim Signieren auftritt.
+     */
+    public String signText(String text, String algorithm) throws Exception {
+<span class="fc" id="L47">        KeyPair keyPair = getKeyPair(algorithm);</span>
+<span class="fc" id="L48">        Signature signature = Signature.getInstance(algorithm, &quot;BC&quot;);</span>
+<span class="fc" id="L49">        signature.initSign(keyPair.getPrivate());</span>
+<span class="fc" id="L50">        signature.update(text.getBytes());</span>
+<span class="fc" id="L51">        byte[] signedData = signature.sign();</span>
+<span class="fc" id="L52">        return Base64.getEncoder().encodeToString(signedData);</span>
+    }
+
+    /**
+     * @brief Verifiziert eine digitale Signatur.
+     * @param text            Der ursprüngliche Text.
+     * @param algorithm       Der Signaturalgorithmus (SHA256withDSA oder
+     *                        SHA256withECDSA).
+     * @param signatureBase64 Die Base64-kodierte Signatur.
+     * @return True, wenn die Signatur gültig ist, sonst false.
+     * @throws Exception Falls ein Fehler bei der Verifikation auftritt.
+     */
+    public boolean verifySignature(String text, String algorithm, String signatureBase64) throws Exception {
+<span class="fc" id="L65">        KeyPair keyPair = getKeyPair(algorithm);</span>
+<span class="fc" id="L66">        Signature signature = Signature.getInstance(algorithm, &quot;BC&quot;);</span>
+<span class="fc" id="L67">        signature.initVerify(keyPair.getPublic());</span>
+<span class="fc" id="L68">        signature.update(text.getBytes());</span>
+<span class="fc" id="L69">        byte[] signatureBytes = Base64.getDecoder().decode(signatureBase64);</span>
+<span class="fc" id="L70">        return signature.verify(signatureBytes);</span>
+    }
+
+    /**
+     * @brief Holt das gespeicherte Schlüsselpaar oder erstellt es, falls nicht
+     *        vorhanden.
+     * @param algorithm Der Signaturalgorithmus (SHA256withDSA oder
+     *                  SHA256withECDSA).
+     * @return Ein `KeyPair` mit dem gespeicherten oder neu generierten
+     *         Schlüsselpaar.
+     * @throws Exception Falls ein Fehler auftritt.
+     */
+    private KeyPair getKeyPair(String algorithm) throws Exception {
+<span class="fc bfc" id="L83" title="All 2 branches covered.">        String keyFile = algorithm.equals(&quot;SHA256withDSA&quot;) ? DSA_KEY_FILE : ECDSA_KEY_FILE;</span>
+
+        // 🔍 Prüfen, ob Schlüssel bereits existieren
+<span class="fc" id="L86">        File file = new File(keyFile);</span>
+<span class="pc bpc" id="L87" title="1 of 2 branches missed.">        if (file.exists()) {</span>
+<span class="fc" id="L88">            return loadKeyPair(keyFile, algorithm);</span>
+        }
+
+        // 🔑 Falls nicht vorhanden, KeyPair generieren und speichern
+<span class="nc" id="L92">        KeyPair keyPair = generateKeyPair(algorithm);</span>
+<span class="nc" id="L93">        saveKeyPair(keyPair, keyFile);</span>
+<span class="nc" id="L94">        return keyPair;</span>
+    }
+
+    /**
+     * @brief Erstellt ein neues Schlüsselpaar für das angegebene
+     *        Signaturalgorithmus.
+     * @param algorithm Der Signaturalgorithmus (SHA256withDSA oder
+     *                  SHA256withECDSA).
+     * @return Ein generiertes `KeyPair`.
+     * @throws Exception Falls der Algorithmus nicht unterstützt wird.
+     */
+    private KeyPair generateKeyPair(String algorithm) throws Exception {
+        KeyPairGenerator keyGen;
+<span class="fc bfc" id="L107" title="All 2 branches covered.">        if (&quot;SHA256withDSA&quot;.equals(algorithm)) {</span>
+<span class="fc" id="L108">            keyGen = KeyPairGenerator.getInstance(&quot;DSA&quot;, &quot;BC&quot;);</span>
+<span class="fc" id="L109">            keyGen.initialize(3072);</span>
+<span class="pc bpc" id="L110" title="1 of 2 branches missed.">        } else if (&quot;SHA256withECDSA&quot;.equals(algorithm)) {</span>
+<span class="fc" id="L111">            keyGen = KeyPairGenerator.getInstance(&quot;EC&quot;, &quot;BC&quot;);</span>
+<span class="fc" id="L112">            keyGen.initialize(new ECGenParameterSpec(&quot;P-256&quot;));</span>
+        } else {
+<span class="nc" id="L114">            throw new IllegalArgumentException(&quot;❌ Nicht unterstützter Algorithmus: &quot; + algorithm);</span>
+        }
+<span class="fc" id="L116">        return keyGen.generateKeyPair();</span>
+    }
+
+    /**
+     * @brief Speichert das generierte Schlüsselpaar in einer Datei.
+     * @param keyPair  Das zu speichernde `KeyPair`.
+     * @param fileName Der Name der Datei, in die das Schlüsselpaar gespeichert
+     *                 wird.
+     * @throws Exception Falls ein Fehler beim Speichern auftritt.
+     */
+    private void saveKeyPair(KeyPair keyPair, String fileName) throws Exception {
+<span class="nc" id="L127">        String privateKeyEncoded = Base64.getEncoder().encodeToString(keyPair.getPrivate().getEncoded());</span>
+<span class="nc" id="L128">        String publicKeyEncoded = Base64.getEncoder().encodeToString(keyPair.getPublic().getEncoded());</span>
+
+<span class="nc" id="L130">        try (PrintWriter out = new PrintWriter(new FileWriter(fileName))) {</span>
+<span class="nc" id="L131">            out.println(privateKeyEncoded);</span>
+<span class="nc" id="L132">            out.println(publicKeyEncoded);</span>
+        }
+
+<span class="nc" id="L135">        logger.info(&quot;🔑 KeyPair gespeichert: &quot; + fileName);</span>
+<span class="nc" id="L136">    }</span>
+
+    /**
+     * @brief Lädt ein gespeichertes Schlüsselpaar aus einer Datei.
+     * @param fileName  Der Name der Datei mit den gespeicherten Schlüsseln.
+     * @param algorithm Der Signaturalgorithmus (SHA256withDSA oder
+     *                  SHA256withECDSA).
+     * @return Das wiederhergestellte `KeyPair`.
+     * @throws Exception Falls der Algorithmus nicht unterstützt wird oder ein
+     *                   Fehler beim Laden auftritt.
+     */
+    private KeyPair loadKeyPair(String fileName, String algorithm) throws Exception {
+<span class="fc" id="L148">        try (BufferedReader reader = new BufferedReader(new FileReader(fileName))) {</span>
+<span class="fc" id="L149">            String privateKeyEncoded = reader.readLine();</span>
+<span class="fc" id="L150">            String publicKeyEncoded = reader.readLine();</span>
+
+<span class="fc" id="L152">            byte[] privateKeyBytes = Base64.getDecoder().decode(privateKeyEncoded);</span>
+<span class="fc" id="L153">            byte[] publicKeyBytes = Base64.getDecoder().decode(publicKeyEncoded);</span>
+
+            KeyFactory keyFactory;
+<span class="fc bfc" id="L156" title="All 2 branches covered.">            if (&quot;SHA256withDSA&quot;.equals(algorithm)) {</span>
+<span class="fc" id="L157">                keyFactory = KeyFactory.getInstance(&quot;DSA&quot;, &quot;BC&quot;);</span>
+<span class="fc bfc" id="L158" title="All 2 branches covered.">            } else if (&quot;SHA256withECDSA&quot;.equals(algorithm)) {</span>
+<span class="fc" id="L159">                keyFactory = KeyFactory.getInstance(&quot;EC&quot;, &quot;BC&quot;);</span>
+            } else {
+<span class="fc" id="L161">                throw new IllegalArgumentException(&quot;❌ Nicht unterstützter Algorithmus: &quot; + algorithm);</span>
+            }
+
+<span class="fc" id="L164">            PrivateKey privateKey = keyFactory.generatePrivate(new PKCS8EncodedKeySpec(privateKeyBytes));</span>
+<span class="fc" id="L165">            PublicKey publicKey = keyFactory.generatePublic(new X509EncodedKeySpec(publicKeyBytes));</span>
+
+<span class="fc" id="L167">            logger.info(&quot;🔑 KeyPair erfolgreich geladen aus: &quot; + fileName);</span>
+<span class="fc" id="L168">            return new KeyPair(publicKey, privateKey);</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.8.202204050719</span></div></body></html>
