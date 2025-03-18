@@ -148,5 +148,5 @@ Falls du beitragen möchtest:
 
 ### 📞 Kontakt
 
-Falls du Fragen hast, erstelle ein [Issue](https://github.com/realr4an/secure-texteditor/issues) oder kontaktiere mich per E-Mail. 🚀
+Falls du Fragen hast, erstelle ein [Issue](https://github.com/realr4an/SecureTextEditor/issues) oder kontaktiere mich per E-Mail. 🚀
 
